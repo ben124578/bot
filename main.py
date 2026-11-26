@@ -1,25 +1,16 @@
-print("STARTING BOT...")
+
 import os
 import stoat
-from threading import Thread
-from flask import Flask
-import commands
-print("IMPORTING COMMANDS...")
 import commands
 
-print("COMMANDS IMPORTED!")
+from flask import Flask
+
 # Flask keep-alive server
 app = Flask(__name__)
 
 @app.route("/")
 def home():
     return "Bot is alive!"
-
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-Thread(target=run_web, daemon=True).start()
 
 
 # Stoat Bot Setup
@@ -36,13 +27,18 @@ class MyBot(stoat.Client):
         await commands.handle_message(self, message)
 
 
-# Load token
-token = os.environ.get("BOT_KEY")
+# Start the bot
+def start_bot():
+    token = os.environ.get("BOT_KEY")
 
-if not token:
-    raise ValueError("BOT_KEY environment variable is missing!")
+    if not token:
+        raise ValueError("BOT_KEY environment variable is missing!")
 
-client = MyBot(token=token)
-print("STARTING STOAT CLIENT...")
-client.run()
-client.run()
+    client = MyBot(token=token)
+    print("STARTING STOAT CLIENT...")
+    client.run()
+
+
+if __name__ == "__main__":
+    start_bot()
+
