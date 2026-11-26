@@ -2,3 +2,4 @@ flask
 stoat.py
 gunicorn
 supervisor
+openai
