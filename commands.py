@@ -1,8 +1,5 @@
 
-import stoat
 import random
-
-client = stoat.Client()
 
 # Saint's Corpse gacha
 corpse_parts = [
@@ -14,10 +11,7 @@ corpse_parts = [
     ("Torso", 3)
 ]
 
-@client.on(stoat.MessageCreateEvent)
-async def on_message(event, /):
-    message = event.message
-
+async def handle_message(client, message):
     # Ignore bot messages
     if message.author.relationship is stoat.RelationshipStatus.user:
         return
@@ -36,13 +30,11 @@ async def on_message(event, /):
                 "You obtained the **SAINT'S CORPSE TORSO**!\n"
                 "A miracle has occurred..."
             )
-
         elif result == "Heart":
             response = (
                 "❤️ **INCREDIBLE SPIN!** ❤️\n"
                 "You obtained the **SAINT'S CORPSE HEART**!"
             )
-
         else:
             response = (
                 "🌀 **TUSK SPIN!** 🌀\n"
@@ -50,6 +42,5 @@ async def on_message(event, /):
             )
 
         await message.channel.send(response)
-
 
 
