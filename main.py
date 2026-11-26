@@ -1,4 +1,4 @@
-
+print("STARTING BOT...")
 import os
 import stoat
 from threading import Thread
