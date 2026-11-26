@@ -51,5 +51,5 @@ async def on_message(event, /):
 
         await message.channel.send(response)
 
-client.run("YOUR_BOT_TOKEN")
+
 
