@@ -1,6 +1,5 @@
 import stoat
 import random
-import random
 
 # Saint's Corpse gacha
 corpse_parts = [
