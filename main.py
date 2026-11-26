@@ -40,4 +40,6 @@ if not token:
     raise ValueError("BOT_KEY environment variable is missing!")
 
 client = MyBot(token=token)
+print("STARTING STOAT CLIENT...")
+client.run()
 client.run()
