@@ -4,7 +4,10 @@ import stoat
 from threading import Thread
 from flask import Flask
 import commands
+print("IMPORTING COMMANDS...")
+import commands
 
+print("COMMANDS IMPORTED!")
 # Flask keep-alive server
 app = Flask(__name__)
 
