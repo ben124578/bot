@@ -3,20 +3,19 @@ import os
 import random
 from openai import OpenAI
 
-# Grok API
-api_key = os.getenv("XAI_API_KEY")
+# Groq API
+api_key = os.getenv("GROQ_API_KEY")
 
 print(
-    "XAI API KEY CHECK:",
+    "GROQ API KEY CHECK:",
     "FOUND" if api_key else "MISSING",
     flush=True
 )
 
 grok = OpenAI(
     api_key=api_key,
-    base_url="https://api.x.ai/v1"
+    base_url="https://api.groq.com/openai/v1"
 )
-
 # Saint's Corpse gacha
 corpse_parts = [
     ("Left Arm", 30),
