@@ -3,7 +3,7 @@ import os
 import random
 from openai import OpenAI
 
-# Grok API connection
+# Grok API
 grok = OpenAI(
     api_key=os.environ.get("XAI_API_KEY"),
     base_url="https://api.x.ai/v1"
@@ -19,23 +19,25 @@ corpse_parts = [
     ("Torso", 3)
 ]
 
-# Active Tusk conversations
-waiting_for_message = set()
+# Active AI conversations
+active_users = set()
 conversation_history = {}
-catchphrase_countdown = {}
 
+# Tusk catchphrases
 CATCHPHRASES = ["chumi", "movẽre crüs"]
 
 SYSTEM_PROMPT = """
-You are Tusk, a sarcastic, brutally honest and funny AI chatbot.
-You have a chaotic personality and enjoy joking around.
-You can tease the user, use casual language and occasionally roast them.
-Do not be overly formal. Respond naturally and stay conversational.
-Do not pretend to be a human.
-Keep most responses reasonably short.
+You are Tusk, a sarcastic, brutally honest and funny AI.
+You have a chaotic personality.
+You can tease and roast users playfully.
+Speak casually and naturally.
+Keep responses relatively short.
 """
 
+
 async def handle_message(client, message):
+
+    # Ignore bot messages
     if message.author_id == client.me.id:
         return
 
@@ -77,35 +79,42 @@ async def handle_message(client, message):
         return
 
     # --------------------------------
-    # STOP TUSK MODE
-    # --------------------------------
-    if lower_content == "tusk stop":
-        waiting_for_message.discard(user_id)
-        conversation_history.pop(user_id, None)
-        catchphrase_countdown.pop(user_id, None)
-
-        await message.channel.send("Tusk mode deactivated.")
-        return
-
-    # --------------------------------
-    # ACTIVATE TUSK MODE
+    # ACTIVATE AI MODE
     # --------------------------------
     if lower_content == "tusk":
-        waiting_for_message.add(user_id)
 
-        conversation_history[user_id] = [
-            {"role": "system", "content": SYSTEM_PROMPT}
-        ]
+        if user_id not in active_users:
+            active_users.add(user_id)
 
-        catchphrase_countdown[user_id] = random.randint(1, 2)
+            conversation_history[user_id] = [
+                {"role": "system", "content": SYSTEM_PROMPT}
+            ]
 
-        await message.channel.send("chumi")
+            await message.channel.send("chumi")
+        else:
+            await message.channel.send(
+                "I'm already here, dumbass. Say something."
+            )
+
         return
 
     # --------------------------------
-    # GROK AI CONVERSATION
+    # DEACTIVATE AI MODE
     # --------------------------------
-    if user_id in waiting_for_message:
+    if lower_content == "spin ball":
+
+        if user_id in active_users:
+            active_users.remove(user_id)
+            conversation_history.pop(user_id, None)
+
+            await message.channel.send("chumi")
+
+        return
+
+    # --------------------------------
+    # GROK CONVERSATION
+    # --------------------------------
+    if user_id in active_users:
 
         history = conversation_history[user_id]
 
@@ -124,40 +133,33 @@ async def handle_message(client, message):
             answer = response.output_text
 
             if not answer:
-                answer = "I have absolutely no idea what to say."
+                answer = "My brain just stopped working."
 
             history.append({
                 "role": "assistant",
                 "content": answer
             })
 
-            # Keep conversation history manageable
+            # Keep memory manageable
             if len(history) > 21:
-                conversation_history[user_id] = [
-                    history[0]
-                ] + history[-20:]
+                conversation_history[user_id] = (
+                    [history[0]] + history[-20:]
+                )
 
             await message.channel.send(answer)
 
             # Random catchphrase every 1-2 AI replies
-            catchphrase_countdown[user_id] -= 1
-
-            if catchphrase_countdown[user_id] <= 0:
-                phrase = random.choice(CATCHPHRASES)
-                await message.channel.send(phrase)
-
-                catchphrase_countdown[user_id] = random.randint(1, 2)
+            if random.randint(1, 2) == 1:
+                await message.channel.send(
+                    random.choice(CATCHPHRASES)
+                )
 
         except Exception as error:
             print(f"Grok API error: {error}")
 
-            # Remove the failed message from history
             if history and history[-1]["role"] == "user":
                 history.pop()
 
             await message.channel.send(
-                "My brain just malfunctioned. Try again."
+                "My brain malfunctioned. Try again."
             )
-
-        return
-
