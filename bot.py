@@ -6,8 +6,9 @@ print("BOT FILE IS STARTING", flush=True)
 
 class MyBot(stoat.Client):
 
-    async def on_ready(self, event, /):
-        print(f"Logged in as {self.me}")
+        async def on_ready(self, event, /):
+        print(f"Logged in as {self.me}", flush=True)
+        print("BOT STATUS:", self.me.status, flush=True)
 
     async def on_message(self, message, /):
         if message.author_id == self.me.id:
