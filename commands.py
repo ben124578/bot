@@ -132,9 +132,8 @@ async def handle_message(client, message):
 
         try:
             response = grok.responses.create(
-                model="grok-4.7",
+                model="openai/gpt-oss-120b",
                 input=history,
-                store=False
             )
 
             answer = response.output_text
