@@ -3,9 +3,16 @@ import os
 import random
 from openai import OpenAI
 
-# Grok API
+api_key = os.getenv("XAI_API_KEY")
+
+print(
+    "XAI API KEY CHECK:",
+    "FOUND" if api_key else "MISSING",
+    flush=True
+)
+
 grok = OpenAI(
-    api_key=os.environ.get("XAI_API_KEY"),
+    api_key=api_key,
     base_url="https://api.x.ai/v1"
 )
 
