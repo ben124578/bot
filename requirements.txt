@@ -3,3 +3,4 @@ stoat.py
 gunicorn
 supervisor
 openai
+psycopg[binary]
