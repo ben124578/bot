@@ -1,6 +1,8 @@
 import os
 import stoat
 import commands
+import sys
+print("BOT FILE IS STARTING", flush=True)
 
 class MyBot(stoat.Client):
 
@@ -21,4 +23,8 @@ if not token:
 
 client = MyBot(token=token)
 print("STARTING STOAT CLIENT...")
-client.run()
+try:
+    client.run()
+except Exception as error:
+    print("BOT CRASHED:", repr(error), flush=True)
+    raise
