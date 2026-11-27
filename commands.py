@@ -1,205 +1,179 @@
 
 import os
-import random
+import json
 from openai import OpenAI
+import psycopg
 
-# Groq API
+# --------------------------------
+# GROQ AI SETUP
+# --------------------------------
+
 api_key = os.getenv("GROQ_API_KEY")
+database_url = os.getenv("DATABASE_URL")
 
-print(
-    "GROQ API KEY CHECK:",
-    "FOUND" if api_key else "MISSING",
-    flush=True
-)
+if not api_key:
+    raise ValueError("GROQ_API_KEY is missing!")
+
+if not database_url:
+    raise ValueError("DATABASE_URL is missing!")
+
+print("GROQ API KEY:", "FOUND", flush=True)
+print("DATABASE URL:", "FOUND", flush=True)
 
 grok = OpenAI(
     api_key=api_key,
     base_url="https://api.groq.com/openai/v1"
 )
-# Saint's Corpse gacha
-corpse_parts = [
-    ("Left Arm", 30),
-    ("Right Arm", 25),
-    ("Left Eye", 20),
-    ("Right Eye", 15),
-    ("Heart", 7),
-    ("Torso", 3)
-]
 
-# Active AI conversations
-active_users = set()
-conversation_history = {}
+MODEL = "openai/gpt-oss-120b"
 
-# Tusk catchphrases
-CATCHPHRASES = ["chumi", "movẽre crüs"]
+
+# --------------------------------
+# TUSK PERSONALITY
+# --------------------------------
 
 SYSTEM_PROMPT = """
 You are Tusk, a sarcastic, brutally honest and funny AI.
+
 You have a chaotic personality.
 You can tease and roast users playfully.
 Speak casually and naturally.
 Keep responses relatively short.
+Remember details from the conversation.
 """
 
 
+# --------------------------------
+# SUPABASE DATABASE
+# --------------------------------
+
+def get_connection():
+    return psycopg.connect(database_url)
+
+
+def initialize_database():
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tusk_memory (
+                    user_id TEXT PRIMARY KEY,
+                    history JSONB NOT NULL DEFAULT '[]'::jsonb
+                )
+            """)
+
+    print("TUSK DATABASE READY!", flush=True)
+
+
+def get_history(user_id):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT history::text FROM tusk_memory WHERE user_id = %s",
+                (user_id,)
+            )
+
+            result = cursor.fetchone()
+
+    if result:
+        return json.loads(result[0])
+
+    return []
+
+
+def save_history(user_id, history):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO tusk_memory (user_id, history)
+                VALUES (%s, %s::jsonb)
+                ON CONFLICT (user_id)
+                DO UPDATE SET history = EXCLUDED.history
+            """, (user_id, json.dumps(history)))
+
+
+# Create the database table when the bot starts
+initialize_database()
+
+
+# --------------------------------
+# HANDLE MESSAGES
+# --------------------------------
+
 async def handle_message(client, message):
 
-    # Ignore bot messages
+    # Ignore the bot's own messages
     if message.author_id == client.me.id:
         return
 
-    user_id = message.author_id
-    content = message.content.strip()
-    lower_content = content.lower()
+    content = (message.content or "").strip()
 
-    # --------------------------------
-    # SAINT'S CORPSE GACHA
-    # --------------------------------
-    if lower_content == "tusk spin the steel":
-
-        result = random.choices(
-            [part[0] for part in corpse_parts],
-            weights=[part[1] for part in corpse_parts],
-            k=1
-        )[0]
-
-        if result == "Torso":
-            response = (
-                "🌟 **HOLY SHIT!!!** 🌟\n"
-                "You obtained the **SAINT'S CORPSE TORSO**!\n"
-                "A miracle has occurred..."
-            )
-
-        elif result == "Heart":
-            response = (
-                "❤️ **INCREDIBLE SPIN!** ❤️\n"
-                "You obtained the **SAINT'S CORPSE HEART**!"
-            )
-
-        else:
-            response = (
-                "🌀 **TUSK SPIN!** 🌀\n"
-                f"You obtained: **Saint's Corpse - {result}**!"
-            )
-
-        await message.channel.send(response)
+    if not content:
         return
 
-    # --------------------------------
-    # ACTIVATE AI MODE
-    # --------------------------------
-    if lower_content == "tusk":
+    user_id = str(message.author_id)
 
-        if user_id not in active_users:
-            active_users.add(user_id)
+    # Check whether the message starts with "tu"
+    starts_with_tu = (
+        content[:2].lower() == "tu"
+        and (len(content) == 2 or content[2].isspace())
+    )
 
-            conversation_history[user_id] = [
-                {"role": "system", "content": SYSTEM_PROMPT}
-            ]
+    # Remove "tu" when sending the message to Groq
+    if starts_with_tu:
+        user_message = content[2:].strip()
+    else:
+        user_message = content
 
-            await message.channel.send("chumi")
-        else:
-            await message.channel.send(
-                "I'm already here, dumbass. Say something."
-            )
+    # Load this user's permanent conversation history
+    history = get_history(user_id)
 
-        return
-
-    # --------------------------------
-    # DEACTIVATE AI MODE
-    # --------------------------------
-    if lower_content == "spin ball":
-
-        if user_id in active_users:
-            active_users.remove(user_id)
-            conversation_history.pop(user_id, None)
-
-            await message.channel.send("chumi")
-
-        return
-
-    # --------------------------------
-    # GROK CONVERSATION
-    # --------------------------------
-    if user_id in active_users:
-
-        history = conversation_history[user_id]
-
+    # Remember the message, even if it doesn't start with "tu"
+    if user_message:
         history.append({
             "role": "user",
-            "content": content
+            "content": user_message
         })
 
-        try:
-            response = grok.responses.create(
-                model="openai/gpt-oss-120b",
-                input=history,
-            )
+    # Save immediately so messages survive restarts
+    save_history(user_id, history)
 
-            answer = response.output_text
+    # Stay silent unless the message starts with "tu"
+    if not starts_with_tu:
+        return
 
-            if not answer:
-                answer = "My brain just stopped working."
+    if not user_message:
+        return
 
-            history.append({
-                "role": "assistant",
-                "content": answer
-            })
+    # Build conversation for Groq
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ] + history
 
-            # Keep memory manageable
-            if len(history) > 21:
-                conversation_history[user_id] = (
-                    [history[0]] + history[-20:]
-                )
+    try:
+        response = grok.chat.completions.create(
+            model=MODEL,
+            messages=messages
+        )
 
-            await message.channel.send(answer)
+        answer = response.choices[0].message.content
 
-            # Random catchphrase
-            if random.randint(1, 2) == 1:
-                await message.channel.send(
-                    random.choice(CATCHPHRASES)
-                )
+        if not answer:
+            answer = "My brain just stopped working."
 
-        except Exception as error:
-            print(
-                "GROK ERROR TYPE:",
-                type(error).__name__,
-                flush=True
-            )
+        # Remember Tusk's response too
+        history.append({
+            "role": "assistant",
+            "content": answer
+        })
 
-            print(
-                "GROK ERROR:",
-                repr(error),
-                flush=True
-            )
+        save_history(user_id, history)
 
-            print(
-                "GROK STATUS:",
-                getattr(error, "status_code", None),
-                flush=True
-            )
+        await message.channel.send(answer)
 
-            error_response = getattr(error, "response", None)
+    except Exception as error:
+        print("GROQ ERROR TYPE:", type(error).__name__, flush=True)
+        print("GROQ ERROR:", repr(error), flush=True)
 
-            if error_response is not None:
-                print(
-                    "GROK RESPONSE BODY:",
-                    error_response.text,
-                    flush=True
-                )
-
-            error_body = getattr(error, "body", None)
-
-            if error_body is not None:
-                print(
-                    "GROK ERROR BODY:",
-                    repr(error_body),
-                    flush=True
-                )
-
-            if history and history[-1]["role"] == "user":
-                history.pop()
-
-            await message.channel.send(
-                "My brain malfunctioned. Try again."
-            )
+        await message.channel.send(
+            "My brain malfunctioned. Try again."
+        )
