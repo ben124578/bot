@@ -3,6 +3,7 @@ import os
 import random
 from openai import OpenAI
 
+# Grok API
 api_key = os.getenv("XAI_API_KEY")
 
 print(
@@ -155,25 +156,48 @@ async def handle_message(client, message):
 
             await message.channel.send(answer)
 
-            # Random catchphrase every 1-2 AI replies
+            # Random catchphrase
             if random.randint(1, 2) == 1:
                 await message.channel.send(
                     random.choice(CATCHPHRASES)
                 )
 
-               except Exception as error:
-            print("GROK ERROR TYPE:", type(error).__name__, flush=True)
-            print("GROK ERROR:", repr(error), flush=True)
-            print("GROK STATUS:", getattr(error, "status_code", None), flush=True)
+        except Exception as error:
+            print(
+                "GROK ERROR TYPE:",
+                type(error).__name__,
+                flush=True
+            )
+
+            print(
+                "GROK ERROR:",
+                repr(error),
+                flush=True
+            )
+
+            print(
+                "GROK STATUS:",
+                getattr(error, "status_code", None),
+                flush=True
+            )
 
             error_response = getattr(error, "response", None)
 
             if error_response is not None:
-                print("GROK RESPONSE BODY:", error_response.text, flush=True)
+                print(
+                    "GROK RESPONSE BODY:",
+                    error_response.text,
+                    flush=True
+                )
 
             error_body = getattr(error, "body", None)
+
             if error_body is not None:
-                print("GROK ERROR BODY:", repr(error_body), flush=True)
+                print(
+                    "GROK ERROR BODY:",
+                    repr(error_body),
+                    flush=True
+                )
 
             if history and history[-1]["role"] == "user":
                 history.pop()
@@ -181,22 +205,3 @@ async def handle_message(client, message):
             await message.channel.send(
                 "My brain malfunctioned. Try again."
             )
-    print("GROK ERROR TYPE:", type(error).__name__, flush=True)
-    print("GROK ERROR:", repr(error), flush=True)
-    print("GROK STATUS:", getattr(error, "status_code", None), flush=True)
-
-    error_response = getattr(error, "response", None)
-
-    if error_response is not None:
-        print("GROK RESPONSE BODY:", error_response.text, flush=True)
-
-    error_body = getattr(error, "body", None)
-    if error_body is not None:
-        print("GROK ERROR BODY:", repr(error_body), flush=True)
-
-    if history and history[-1]["role"] == "user":
-        history.pop()
-
-    await message.channel.send(
-        "My brain malfunctioned. Try again."
-    )
