@@ -161,7 +161,26 @@ async def handle_message(client, message):
                     random.choice(CATCHPHRASES)
                 )
 
-       except Exception as error:
+               except Exception as error:
+            print("GROK ERROR TYPE:", type(error).__name__, flush=True)
+            print("GROK ERROR:", repr(error), flush=True)
+            print("GROK STATUS:", getattr(error, "status_code", None), flush=True)
+
+            error_response = getattr(error, "response", None)
+
+            if error_response is not None:
+                print("GROK RESPONSE BODY:", error_response.text, flush=True)
+
+            error_body = getattr(error, "body", None)
+            if error_body is not None:
+                print("GROK ERROR BODY:", repr(error_body), flush=True)
+
+            if history and history[-1]["role"] == "user":
+                history.pop()
+
+            await message.channel.send(
+                "My brain malfunctioned. Try again."
+            )
     print("GROK ERROR TYPE:", type(error).__name__, flush=True)
     print("GROK ERROR:", repr(error), flush=True)
     print("GROK STATUS:", getattr(error, "status_code", None), flush=True)
